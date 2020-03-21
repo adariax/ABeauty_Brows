@@ -23,7 +23,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string/>
+   <string>Добавить клиента</string>
   </property>
   <widget class="QLineEdit" name="name_surname">
    <property name="geometry">

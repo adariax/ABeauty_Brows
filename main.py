@@ -10,6 +10,7 @@ from interface.add_client import Ui_Dialog
 from PyQt5.QtWidgets import QApplication, QWidget, QDialog
 from PyQt5.QtWidgets import QTableWidgetItem
 from PyQt5.QtGui import QIcon
+from PyQt5.Qt import Qt
 
 
 db_session.global_init("database/brows_info.sqlite")
@@ -22,6 +23,9 @@ class AddClient(QDialog, Ui_Dialog):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
+
+        self.setWindowIcon(QIcon('interface/ico.png'))
+        self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
 
         self.acccept.clicked.connect(self.add_to_db)
 
@@ -42,10 +46,12 @@ class MainW(QWidget, Ui_Form):
 
         self.session = db_session.create_session()
 
-        self.setWindowIcon(QIcon('data/ico.png'))
+        self.setWindowIcon(QIcon('interface/ico.png'))
+        self.add_button.clicked.connect(self.adding_client)
+
         self.mode = ''
 
-        self.add_button.clicked.connect(self.adding_client)
+        self.load_clients()
 
     def load_clients(self):
         self.table.setColumnCount(1)

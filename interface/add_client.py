@@ -16,7 +16,6 @@ class Ui_Dialog(object):
         Dialog.resize(400, 75)
         Dialog.setMinimumSize(QtCore.QSize(400, 75))
         Dialog.setMaximumSize(QtCore.QSize(400, 75))
-        Dialog.setWindowTitle("")
         self.name_surname = QtWidgets.QLineEdit(Dialog)
         self.name_surname.setGeometry(QtCore.QRect(10, 10, 301, 50))
         font = QtGui.QFont()
@@ -35,5 +34,6 @@ class Ui_Dialog(object):
 
     def retranslateUi(self, Dialog):
         _translate = QtCore.QCoreApplication.translate
+        Dialog.setWindowTitle(_translate("Dialog", "Добавить клиента"))
         self.name_surname.setPlaceholderText(_translate("Dialog", "Имя Фамилия"))
         self.acccept.setText(_translate("Dialog", "ОК"))
