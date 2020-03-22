@@ -4,7 +4,8 @@ from data import db_session
 from data.__all_models import clients, paints, events
 
 from interface.main_window import Ui_Form
-from interface.add_client import Ui_Dialog
+from interface.add_client import Ui_Dialog_C
+from interface.add_paint import Ui_Dialog_P
 
 from PyQt5.QtWidgets import QApplication, QWidget, QDialog  # QMessageBox
 from PyQt5.QtWidgets import QTableWidgetItem
@@ -16,7 +17,27 @@ Paint = paints.Paint
 Event = events.Event
 
 
-class AddClient(QDialog, Ui_Dialog):
+class AddPaint(QDialog, Ui_Dialog_P):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+
+        self.setWindowIcon(QIcon('interface/ico.png'))
+        self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+
+        self.acccept.clicked.connect(self.add_to_db)
+
+    def add_to_db(self):
+        session = db_session.create_session()
+        paint = Paint()
+        paint.title = self.text.text()
+        session.add(paint)
+        session.commit()
+
+        self.close()
+
+
+class AddClient(QDialog, Ui_Dialog_C):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
@@ -50,6 +71,7 @@ class MainW(QWidget, Ui_Form):
 
         self.add_button.clicked.connect(self.adding)
         self.action_button.clicked.connect(self.action)
+        self.change_mode.clicked.connect(self.changing_mode)
 
         self.table.cellDoubleClicked.connect(self.client)
         self.table.cellClicked.connect(self.row_focus)
@@ -63,11 +85,13 @@ class MainW(QWidget, Ui_Form):
     @mode.setter
     def mode(self, mode):
         if mode == 'a':
+            self.change_mode.setText('Перейти')
             self.load_clients()
         elif mode == 'c':
             self.load_current_client(self.table.currentRow() + 1)
         elif mode == 'p':
-            pass
+            self.change_mode.setText('Назад')
+            self.load_paints()
         self._mode = mode
         self.change_buttons()
 
@@ -85,12 +109,28 @@ class MainW(QWidget, Ui_Form):
         elif self.mode == 'c':
             self.mode = 'a'
         elif self.mode == 'p':
-            pass
+            self.delete_paint()
 
     def adding(self):
+        if self.mode == 'a':
+            self.add_client()
+        elif self.mode == 'c':
+            pass
+        elif self.mode == 'p':
+            self.add_paint()
+
+    def add_paint(self):
+        dialog = AddPaint()
+        dialog.exec()
+        self.load_paints()
+
+    def add_client(self):
         dialog = AddClient()
         dialog.exec()
         self.load_clients()
+
+    def changing_mode(self):
+        self.mode = 'p' if self.mode == 'a' else 'a'
 
     def delete_client(self):
         client_id = self.table.currentRow() + 1
@@ -101,8 +141,17 @@ class MainW(QWidget, Ui_Form):
         self.session.commit()
         self.load_clients()
 
+    def delete_paint(self):  # If paint doesn't exist, tell about it to user (output events)
+        paint_id = self.table.currentRow() + 1
+        self.session.query(Paint).filter(Paint.id == paint_id).delete()
+        for number, paint in enumerate(self.session.query(Paint).all()):
+            print(number)
+            paint.id = number + 1
+        self.session.commit()
+        self.load_paints()
+
     def change_buttons(self):
-        self.action_button.setText('Назад' if self.mode != 'a' else 'Удалить')
+        self.action_button.setText('Назад' if self.mode == 'c' else 'Удалить')
 
     def load_clients(self):
         self.table.setColumnCount(1)
@@ -128,6 +177,16 @@ class MainW(QWidget, Ui_Form):
             for col, item in enumerate(event.get_items()):
                 self.table.setItem(row, col, QTableWidgetItem(item))
         self.table.resizeColumnsToContents()
+
+    def load_paints(self):
+        self.table.setColumnCount(1)
+        self.table.setHorizontalHeaderLabels(["Назваине красителя", ])
+        self.table.setRowCount(0)
+
+        for number, client in enumerate(self.session.query(Paint).all()):
+            self.table.setRowCount(self.table.rowCount() + 1)
+            self.table.setItem(number, 0, QTableWidgetItem(client.title))
+        self.table.setColumnWidth(0, 570)
 
 
 app = QApplication(sys.argv)
