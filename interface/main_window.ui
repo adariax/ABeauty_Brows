@@ -16,6 +16,12 @@
     <height>400</height>
    </size>
   </property>
+  <property name="maximumSize">
+   <size>
+    <width>1200</width>
+    <height>400</height>
+   </size>
+  </property>
   <property name="windowTitle">
    <string>a.beauty / brows</string>
   </property>
@@ -63,7 +69,7 @@
     </widget>
    </item>
    <item row="1" column="0">
-    <widget class="QPushButton" name="select_button">
+    <widget class="QPushButton" name="action_button">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
        <horstretch>0</horstretch>
@@ -76,7 +82,7 @@
       </font>
      </property>
      <property name="text">
-      <string>Перейти</string>
+      <string>Удалить</string>
      </property>
     </widget>
    </item>
@@ -99,7 +105,13 @@
     </widget>
    </item>
    <item row="0" column="1" rowspan="5">
-    <widget class="QTableWidget" name="table"/>
+    <widget class="QTableWidget" name="table">
+     <property name="font">
+      <font>
+       <pointsize>12</pointsize>
+      </font>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>

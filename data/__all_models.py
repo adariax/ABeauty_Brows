@@ -1,1 +1,1 @@
-from . import clients, paints
+from . import clients, paints, events
