@@ -20,14 +20,17 @@ Event = events.Event
 
 
 class AddEvent(QDialog, Ui_Dialog_E):
-    def __init__(self):
+    def __init__(self, client_id):
         super().__init__()
         self.setupUi(self)
 
         self.setWindowIcon(QIcon('interface/ico.png'))
         self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
 
+        self.add_btn.clicked.connect(self.add_to_db)
+
         self.session = db_session.create_session()
+        self.client = client_id
 
         self.get_date()
         self.load_cb()
@@ -40,6 +43,18 @@ class AddEvent(QDialog, Ui_Dialog_E):
         self.paints.addItem('')
         for paint in self.session.query(Paint).all():
             self.paints.addItem(paint.title)
+
+    def add_to_db(self):
+        event = Event()
+        event.client_id = self.client
+        event.note = self.text.toPlainText()
+        event.created_date = datetime.date(*map(int,
+                                                self.date.date().toPyDate().isoformat().split('-')))
+        event.paint_id = self.paints.currentIndex()
+        self.session.add(event)
+        self.session.commit()
+
+        self.close()
 
 
 class AddPaint(QDialog, Ui_Dialog_P):
@@ -124,8 +139,11 @@ class MainW(QWidget, Ui_Form):
         self.change_buttons()
 
     def row_focus(self):
-        for i in range(self.table.columnCount()):
-            self.table.item(self.table.currentRow(), i).setSelected(True)
+        try:
+            for i in range(self.table.columnCount()):
+                self.table.item(self.table.currentRow(), i).setSelected(True)
+        except:
+            pass
 
     def client(self):
         if self.mode == 'a':
@@ -152,7 +170,7 @@ class MainW(QWidget, Ui_Form):
         self.loading(self.mode)
 
     def add_event(self):
-        dialog = AddEvent()
+        dialog = AddEvent(self.curr_client)
         dialog.exec()
         self.load_current_client(self.curr_client)
 
@@ -185,18 +203,23 @@ class MainW(QWidget, Ui_Form):
         self.setWindowTitle("a.beauty / " + client.name_surname)
 
         self.table.clear()
-        self.table.setColumnCount(2)
-        self.table.setHorizontalHeaderLabels(["Время посещения", "Примечания"])
+        self.table.setColumnCount(3)
+        self.table.setHorizontalHeaderLabels(["Дата", "Краситель", "Примечания", ])
         self.table.setRowCount(0)
+
+        self.table.setColumnWidth(0, 120)
+        self.table.setColumnWidth(1, 125)
+        self.table.setColumnWidth(2, 300)
 
         for row, event in enumerate(client.events):
             self.table.setRowCount(self.table.rowCount() + 1)
-            for col, item in enumerate(event.get_items()):
-                self.table.setItem(row, col, QTableWidgetItem(item))
-        self.table.resizeColumnsToContents()
+            for col, item in enumerate((event.created_date, event.paint_id, event.note)):
+                if col == 1:
+                    item = self.session.query(Paint).filter(Paint.id == item).first().title
+                self.table.setItem(row, col, QTableWidgetItem(str(item)))
+                self.table.setRowHeight(row, 50)
 
     def loading(self, mode):
-        print(mode)
         self.table.setColumnCount(1)
         self.table.setHorizontalHeaderLabels(["Назваине красителя", ] if mode == 'p'
                                              else ["Имя Фамилия клиента", ])

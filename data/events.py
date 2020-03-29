@@ -13,8 +13,8 @@ class Event(SqlAlchemyBase):
     client_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey("clients.id"))
     client = orm.relation("Client")
 
-    note = sqlalchemy.Column(sqlalchemy.TEXT)
-    created_date = sqlalchemy.Column(sqlalchemy.Date, default=datetime.date)
+    paint_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey("paints.id"))
+    paint = orm.relation("Paint")
 
-    def get_items(self):
-        return [self.created_date, self.note]
+    note = sqlalchemy.Column(sqlalchemy.TEXT)
+    created_date = sqlalchemy.Column(sqlalchemy.Date)
