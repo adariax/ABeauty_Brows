@@ -1,4 +1,5 @@
 import sys
+import datetime
 
 from data import db_session
 from data.__all_models import clients, paints, events
@@ -6,15 +7,39 @@ from data.__all_models import clients, paints, events
 from interface.main_window import Ui_Form
 from interface.add_client import Ui_Dialog_C
 from interface.add_paint import Ui_Dialog_P
+from interface.add_event import Ui_Dialog_E
 
 from PyQt5.QtWidgets import QApplication, QWidget, QDialog  # QMessageBox
 from PyQt5.QtWidgets import QTableWidgetItem
 from PyQt5.QtGui import QIcon
-from PyQt5.Qt import Qt
+from PyQt5.Qt import Qt, QDate
 
 Client = clients.Client
 Paint = paints.Paint
 Event = events.Event
+
+
+class AddEvent(QDialog, Ui_Dialog_E):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+
+        self.setWindowIcon(QIcon('interface/ico.png'))
+        self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+
+        self.session = db_session.create_session()
+
+        self.get_date()
+        self.load_cb()
+
+    def get_date(self):
+        date_now = list(map(int, str(datetime.datetime.now()).split()[0].split('-')))
+        self.date.setDate(QDate(*date_now))
+
+    def load_cb(self):
+        self.paints.addItem('')
+        for paint in self.session.query(Paint).all():
+            self.paints.addItem(paint.title)
 
 
 class AddPaint(QDialog, Ui_Dialog_P):
@@ -76,7 +101,9 @@ class MainW(QWidget, Ui_Form):
         self.table.cellDoubleClicked.connect(self.client)
         self.table.cellClicked.connect(self.row_focus)
 
-        self.load_clients()
+        self.curr_client = None
+
+        self.loading(self.mode)
 
     @property
     def mode(self):
@@ -86,13 +113,14 @@ class MainW(QWidget, Ui_Form):
     def mode(self, mode):
         if mode == 'a':
             self.change_mode.setText('Перейти')
-            self.load_clients()
         elif mode == 'c':
-            self.load_current_client(self.table.currentRow() + 1)
+            self.curr_client = self.table.currentRow() + 1
         elif mode == 'p':
             self.change_mode.setText('Назад')
-            self.load_paints()
+        self.change_mode.setVisible(True if mode != 'c' else False)
+        self.label_2.setVisible(True if mode != 'c' else False)
         self._mode = mode
+        self.loading(self.mode) if mode != 'c' else self.load_current_client(self.curr_client)
         self.change_buttons()
 
     def row_focus(self):
@@ -112,25 +140,27 @@ class MainW(QWidget, Ui_Form):
             self.delete_paint()
 
     def adding(self):
+        dialog = None
         if self.mode == 'a':
-            self.add_client()
+            dialog = AddClient()
         elif self.mode == 'c':
-            pass
+            self.add_event()
+            return
         elif self.mode == 'p':
-            self.add_paint()
-
-    def add_paint(self):
-        dialog = AddPaint()
+            dialog = AddPaint()
         dialog.exec()
-        self.load_paints()
+        self.loading(self.mode)
 
-    def add_client(self):
-        dialog = AddClient()
+    def add_event(self):
+        dialog = AddEvent()
         dialog.exec()
-        self.load_clients()
+        self.load_current_client(self.curr_client)
 
     def changing_mode(self):
         self.mode = 'p' if self.mode == 'a' else 'a'
+
+    def change_buttons(self):
+        self.action_button.setText('Назад' if self.mode == 'c' else 'Удалить')
 
     def delete_client(self):
         client_id = self.table.currentRow() + 1
@@ -139,7 +169,7 @@ class MainW(QWidget, Ui_Form):
             client.id = number + 1
         self.session.query(Event).filter(Event.client_id == client_id).delete()
         self.session.commit()
-        self.load_clients()
+        self.loading(self.mode)
 
     def delete_paint(self):  # If paint doesn't exist, tell about it to user (output events)
         paint_id = self.table.currentRow() + 1
@@ -148,20 +178,7 @@ class MainW(QWidget, Ui_Form):
             print(number)
             paint.id = number + 1
         self.session.commit()
-        self.load_paints()
-
-    def change_buttons(self):
-        self.action_button.setText('Назад' if self.mode == 'c' else 'Удалить')
-
-    def load_clients(self):
-        self.table.setColumnCount(1)
-        self.table.setHorizontalHeaderLabels(["Имя Фамилия клиента", ])
-        self.table.setRowCount(0)
-
-        for number, client in enumerate(self.session.query(Client).all()):
-            self.table.setRowCount(self.table.rowCount() + 1)
-            self.table.setItem(number, 0, QTableWidgetItem(client.name_surname))
-        self.table.setColumnWidth(0, 570)
+        self.loading(self.mode)
 
     def load_current_client(self, client_id):
         client = self.session.query(Client).filter(Client.id == client_id).first()
@@ -178,14 +195,17 @@ class MainW(QWidget, Ui_Form):
                 self.table.setItem(row, col, QTableWidgetItem(item))
         self.table.resizeColumnsToContents()
 
-    def load_paints(self):
+    def loading(self, mode):
+        print(mode)
         self.table.setColumnCount(1)
-        self.table.setHorizontalHeaderLabels(["Назваине красителя", ])
+        self.table.setHorizontalHeaderLabels(["Назваине красителя", ] if mode == 'p'
+                                             else ["Имя Фамилия клиента", ])
         self.table.setRowCount(0)
 
-        for number, client in enumerate(self.session.query(Paint).all()):
+        for number, item in enumerate(self.session.query(Paint if mode == 'p' else Client).all()):
             self.table.setRowCount(self.table.rowCount() + 1)
-            self.table.setItem(number, 0, QTableWidgetItem(client.title))
+            self.table.setItem(number, 0, QTableWidgetItem(item.title if mode == 'p'
+                                                           else item.name_surname))
         self.table.setColumnWidth(0, 570)
 
 
