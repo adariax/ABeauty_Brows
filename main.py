@@ -9,7 +9,7 @@ from interface.add_client import Ui_Dialog_C
 from interface.add_paint import Ui_Dialog_P
 from interface.add_event import Ui_Dialog_E
 
-from PyQt5.QtWidgets import QApplication, QWidget, QDialog  # QMessageBox
+from PyQt5.QtWidgets import QApplication, QWidget, QDialog, QMessageBox
 from PyQt5.QtWidgets import QTableWidgetItem
 from PyQt5.QtGui import QIcon
 from PyQt5.Qt import Qt, QDate
@@ -51,10 +51,15 @@ class AddEvent(QDialog, Ui_Dialog_E):
         event.created_date = datetime.date(*map(int,
                                                 self.date.date().toPyDate().isoformat().split('-')))
         event.paint_id = self.paints.currentIndex()
-        self.session.add(event)
-        self.session.commit()
+        if event.paint_id == 0:
+            QMessageBox.warning(self, 'Ошибка', 'Не выбран краситель')
+        elif event.note == '':
+            QMessageBox.question(self, 'Ошибка', 'Примечания пусты, если их нет, поставьте прочерк')
+        else:
+            self.session.add(event)
+            self.session.commit()
 
-        self.close()
+            self.close()
 
 
 class AddPaint(QDialog, Ui_Dialog_P):
@@ -139,11 +144,8 @@ class MainW(QWidget, Ui_Form):
         self.change_buttons()
 
     def row_focus(self):
-        try:
-            for i in range(self.table.columnCount()):
-                self.table.item(self.table.currentRow(), i).setSelected(True)
-        except:
-            pass
+        for i in range(self.table.columnCount()):
+            self.table.item(self.table.currentRow(), i).setSelected(True)
 
     def client(self):
         if self.mode == 'a':
@@ -183,18 +185,15 @@ class MainW(QWidget, Ui_Form):
     def delete_client(self):
         client_id = self.table.currentRow() + 1
         self.session.query(Client).filter(Client.id == client_id).delete()
+        self.session.query(Event).filter(Event.client_id == client_id).delete()
         for number, client in enumerate(self.session.query(Client).all()):
             client.id = number + 1
-        self.session.query(Event).filter(Event.client_id == client_id).delete()
         self.session.commit()
         self.loading(self.mode)
 
-    def delete_paint(self):  # If paint doesn't exist, tell about it to user (output events)
+    def delete_paint(self):
         paint_id = self.table.currentRow() + 1
         self.session.query(Paint).filter(Paint.id == paint_id).delete()
-        for number, paint in enumerate(self.session.query(Paint).all()):
-            print(number)
-            paint.id = number + 1
         self.session.commit()
         self.loading(self.mode)
 
@@ -215,7 +214,8 @@ class MainW(QWidget, Ui_Form):
             self.table.setRowCount(self.table.rowCount() + 1)
             for col, item in enumerate((event.created_date, event.paint_id, event.note)):
                 if col == 1:
-                    item = self.session.query(Paint).filter(Paint.id == item).first().title
+                    item = self.session.query(Paint).filter(Paint.id == item).first()
+                    item = item.title if item else 'Краситель удален'
                 self.table.setItem(row, col, QTableWidgetItem(str(item)))
                 self.table.setRowHeight(row, 50)
 
